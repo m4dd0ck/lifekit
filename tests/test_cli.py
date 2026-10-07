@@ -2,8 +2,10 @@
 
 import os
 import tempfile
+import warnings
 
 import pytest
+from click.testing import Result
 from typer.testing import CliRunner
 
 from lifekit.cli.main import app
@@ -201,3 +203,38 @@ class TestLetterCommand:
         result = runner.invoke(app, ["letter", "Nonexistent", "-d", temp_db])
         assert result.exit_code == 1
         assert "not found" in result.stdout
+
+
+class TestShortOptionCollision:
+    """The global -d (db path) must not clash with sub-command short flags."""
+
+    @staticmethod
+    def _invoke_without_click_warnings(args: list[str]) -> Result:
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            result = runner.invoke(app, args)
+        duplicates = [w for w in caught if "used more than once" in str(w.message)]
+        assert duplicates == [], [str(w.message) for w in duplicates]
+        return result
+
+    def test_goal_add_deadline_and_db_path_both_apply(self, temp_db: str) -> None:
+        result = self._invoke_without_click_warnings(
+            ["goal", "add", "Collision goal", "--deadline", "2026-04-01", "-d", temp_db]
+        )
+        assert result.exit_code == 0, result.output
+
+        listing = runner.invoke(app, ["goal", "list", "-d", temp_db])
+        assert "Collision goal" in listing.stdout
+        assert "2026-04-01" in listing.stdout
+
+    def test_stats_mood_days_and_db_path_both_apply(self, temp_db: str) -> None:
+        result = self._invoke_without_click_warnings(
+            ["stats", "mood", "--days", "3", "-d", temp_db]
+        )
+        assert result.exit_code == 0, result.output
+        assert "Mood Trend (3 days)" in result.stdout
+
+    def test_narrative_help_has_no_duplicate_short_flag(self) -> None:
+        result = self._invoke_without_click_warnings(["narrative", "--help"])
+        assert result.exit_code == 0
+        assert result.stdout.count(" -d ") == 1

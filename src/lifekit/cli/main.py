@@ -319,7 +319,7 @@ def journal_list(
 def goal_add(
     outcome: Annotated[str, typer.Argument(help="Goal outcome (SMART format)")],
     deadline: Annotated[
-        str | None, typer.Option("--deadline", "-d", help="Deadline (YYYY-MM-DD)")
+        str | None, typer.Option("--deadline", help="Deadline (YYYY-MM-DD)")
     ] = None,
     db_path: str = DB_PATH_OPTION,
 ) -> None:
@@ -457,7 +457,7 @@ def stats_overview(
 
 @stats_app.command("mood")
 def stats_mood(
-    days: Annotated[int, typer.Option("--days", "-d", help="Number of days")] = 7,
+    days: Annotated[int, typer.Option("--days", help="Number of days")] = 7,
     db_path: str = DB_PATH_OPTION,
 ) -> None:
     """Show mood trends."""
@@ -554,7 +554,7 @@ def stats_correlations(
 
 @app.command("narrative")
 def narrative(
-    days: Annotated[int, typer.Option("--days", "-d", help="Days to summarize")] = 7,
+    days: Annotated[int, typer.Option("--days", help="Days to summarize")] = 7,
     db_path: str = DB_PATH_OPTION,
 ) -> None:
     """Generate AI weekly narrative."""
