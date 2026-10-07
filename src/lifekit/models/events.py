@@ -1,4 +1,9 @@
-"""Event sourcing models for Lifekit."""
+"""Event models for Lifekit.
+
+Events are appended to the ``events`` table and applied once to the current-state
+tables as they are written. They are a record of what happened, not something the
+application replays.
+"""
 
 import uuid
 from datetime import datetime
@@ -28,7 +33,7 @@ class EventType(str, Enum):
 
 
 class Event(BaseModel):
-    """Immutable event - source of truth for all state changes."""
+    """Immutable record of one state change, appended to the event log."""
 
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: EventType
