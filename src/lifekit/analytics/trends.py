@@ -41,9 +41,7 @@ def mood_trend(db: Database, days: int = 7) -> list[tuple[date, float | None]]:
     return trend
 
 
-def habit_completion_trend(
-    db: Database, habit_id: str, days: int = 30
-) -> list[tuple[date, bool]]:
+def habit_completion_trend(db: Database, habit_id: str, days: int = 30) -> list[tuple[date, bool]]:
     """Calculate habit completion trend over the specified number of days.
 
     Returns:

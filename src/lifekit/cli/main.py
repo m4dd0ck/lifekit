@@ -132,7 +132,7 @@ def habit_list(
     habits = db.get_habits(include_archived=include_archived)
 
     if not habits:
-        console.print("[yellow]No habits yet. Add one with:[/yellow] lk habit add \"Your habit\"")
+        console.print('[yellow]No habits yet. Add one with:[/yellow] lk habit add "Your habit"')
         return
 
     table = Table(title="Habits")
@@ -183,7 +183,7 @@ def habit_stats(
     stats_table.add_row("Current streak", f"{streak['current_streak']} days")
     stats_table.add_row("Longest streak", f"{streak['longest_streak']} days")
     stats_table.add_row("Completion rate", f"{streak['completion_rate']}%")
-    stats_table.add_row("Total completions", str(streak['total_logs']))
+    stats_table.add_row("Total completions", str(streak["total_logs"]))
 
     if chrono["best_hour"] is not None:
         stats_table.add_row("Best time", f"{chrono['best_hour']:02d}:00")
@@ -390,7 +390,7 @@ def goal_list(
     goals = db.get_goals(status=status)
 
     if not goals:
-        console.print("[yellow]No goals yet. Add one with:[/yellow] lk goal add \"Your goal\"")
+        console.print('[yellow]No goals yet. Add one with:[/yellow] lk goal add "Your goal"')
         return
 
     table = Table(title="Goals")
@@ -598,11 +598,13 @@ def letter(
         console.print("[yellow]No letter was written for this habit.[/yellow]")
         return
 
-    console.print(Panel(
-        habit["why"],
-        title=f"[bold]Why you started: {habit['name']}[/bold]",
-        subtitle="[dim]Written when you created this habit[/dim]",
-    ))
+    console.print(
+        Panel(
+            habit["why"],
+            title=f"[bold]Why you started: {habit['name']}[/bold]",
+            subtitle="[dim]Written when you created this habit[/dim]",
+        )
+    )
 
 
 if __name__ == "__main__":

@@ -10,9 +10,7 @@ from lifekit.storage.events import EventStore
 class TestDatabase:
     def test_database_initialization(self, db: Database) -> None:
         # Verify tables exist
-        result = db.conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()
+        result = db.conn.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
         table_names = [r[0] for r in result]
 
         assert "events" in table_names
