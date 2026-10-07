@@ -11,7 +11,7 @@ from lifekit.models.events import Event, EventType
 log = structlog.get_logger()
 
 SCHEMA_SQL = """
--- Event store (source of truth)
+-- Append-only event log; every write lands here first, then in the tables below
 CREATE TABLE IF NOT EXISTS events (
     event_id TEXT PRIMARY KEY,
     event_type TEXT NOT NULL,
@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_events_entity ON events(entity_id);
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
 
--- Materialized views for current state
+-- Current-state tables, updated once per event as it is appended (no replay)
 CREATE TABLE IF NOT EXISTS habits (
     habit_id TEXT PRIMARY KEY,
     name TEXT NOT NULL,

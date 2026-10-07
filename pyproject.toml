@@ -1,7 +1,7 @@
 [project]
 name = "lifekit"
 version = "0.1.0"
-description = "Local-first personal management: habits, journal, goals with event sourcing"
+description = "Local-first personal management: habits, journal, goals. Append-only event log in DuckDB"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
