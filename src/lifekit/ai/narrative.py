@@ -7,6 +7,9 @@ from anthropic import Anthropic
 
 from lifekit.storage.database import Database
 
+# Reason: pinned here so a model retirement is a one-line change.
+DEFAULT_MODEL = "claude-sonnet-5-5"
+
 
 def _format_habits(habits: list[dict], logs: dict[str, list[dict]]) -> str:
     """Format habit data for the prompt."""
@@ -120,11 +123,12 @@ Do NOT use phrases like "great job", "amazing work", "you're doing great", or si
 Just observe patterns and reflect thoughtfully. Focus on what the data shows."""
 
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model=DEFAULT_MODEL,
         max_tokens=600,
         messages=[{"role": "user", "content": prompt}],
     )
-    text_block = response.content[0]
-    if hasattr(text_block, "text"):
-        return text_block.text
-    return str(text_block)
+    # Reason: the model may return a thinking block before the text block.
+    for block in response.content:
+        if block.type == "text":
+            return block.text
+    raise RuntimeError(f"Narrative response had no text block (stop_reason={response.stop_reason})")
