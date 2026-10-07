@@ -1,6 +1,7 @@
 """Tests for Lifekit CLI."""
 
 import os
+import re
 import tempfile
 import warnings
 
@@ -237,4 +238,6 @@ class TestShortOptionCollision:
     def test_narrative_help_has_no_duplicate_short_flag(self) -> None:
         result = self._invoke_without_click_warnings(["narrative", "--help"])
         assert result.exit_code == 0
-        assert result.stdout.count(" -d ") == 1
+        # Reason: Typer colours help output under GITHUB_ACTIONS, wrapping -d in ANSI codes.
+        plain = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout)
+        assert plain.count(" -d ") == 1
