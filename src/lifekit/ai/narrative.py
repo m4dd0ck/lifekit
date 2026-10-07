@@ -19,11 +19,7 @@ def _format_habits(habits: list[dict], logs: dict[str, list[dict]]) -> str:
         completed_count = len([log for log in habit_logs if log.get("completed", True)])
         lines.append(f"- {habit['name']}: completed {completed_count} times this week")
 
-        avg_mood = [
-            log["mood_after"]
-            for log in habit_logs
-            if log.get("mood_after") is not None
-        ]
+        avg_mood = [log["mood_after"] for log in habit_logs if log.get("mood_after") is not None]
         if avg_mood:
             lines.append(f"  Average mood after: {sum(avg_mood) / len(avg_mood):.1f}/5")
 

@@ -1,6 +1,5 @@
 """Correlation analysis between habits and mood."""
 
-
 from lifekit.storage.database import Database
 
 
@@ -130,9 +129,7 @@ def get_overview_stats(db: Database) -> dict:
     ).fetchone()
     avg_mood_7d = round(mood_result[0], 1) if mood_result and mood_result[0] else None
 
-    goals_result = db.conn.execute(
-        "SELECT COUNT(*) FROM goals WHERE status = 'active'"
-    ).fetchone()
+    goals_result = db.conn.execute("SELECT COUNT(*) FROM goals WHERE status = 'active'").fetchone()
     active_goals = goals_result[0] if goals_result else 0
 
     return {

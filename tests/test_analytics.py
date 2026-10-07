@@ -34,9 +34,7 @@ class TestStreaks:
         assert streak["longest_streak"] >= 1
         assert streak["total_logs"] == 1
 
-    def test_calculate_streak_multiple_logs(
-        self, db: Database, store: EventStore
-    ) -> None:
+    def test_calculate_streak_multiple_logs(self, db: Database, store: EventStore) -> None:
         habit_id = store.create_habit(name="Multiple logs")
 
         for _ in range(5):
@@ -64,9 +62,7 @@ class TestTrends:
         has_data = any(m is not None for _, m in trend)
         assert has_data
 
-    def test_habit_completion_trend_empty(
-        self, db: Database, store: EventStore
-    ) -> None:
+    def test_habit_completion_trend_empty(self, db: Database, store: EventStore) -> None:
         habit_id = store.create_habit(name="Empty trend")
 
         trend = habit_completion_trend(db, habit_id, days=7)
@@ -75,9 +71,7 @@ class TestTrends:
         for day, completed in trend:
             assert completed is False
 
-    def test_habit_completion_trend_with_data(
-        self, db: Database, store: EventStore
-    ) -> None:
+    def test_habit_completion_trend_with_data(self, db: Database, store: EventStore) -> None:
         habit_id = store.create_habit(name="Trend test")
         store.log_habit(habit_id)
 
@@ -91,9 +85,7 @@ class TestTrends:
 
 
 class TestCorrelations:
-    def test_mood_habit_correlation_empty(
-        self, db: Database, store: EventStore
-    ) -> None:
+    def test_mood_habit_correlation_empty(self, db: Database, store: EventStore) -> None:
         habit_id = store.create_habit(name="Correlation test")
 
         corr = mood_habit_correlation(db, habit_id)
@@ -108,9 +100,7 @@ class TestCorrelations:
             assert "avg_mood_with_habit" in corr
             assert "avg_mood_without_habit" in corr
 
-    def test_chronotype_analysis_empty(
-        self, db: Database, store: EventStore
-    ) -> None:
+    def test_chronotype_analysis_empty(self, db: Database, store: EventStore) -> None:
         habit_id = store.create_habit(name="Chrono test")
 
         chrono = chronotype_analysis(db, habit_id)
@@ -118,9 +108,7 @@ class TestCorrelations:
         assert chrono["best_hour"] is None
         assert chrono["hour_distribution"] == {}
 
-    def test_chronotype_analysis_with_data(
-        self, db: Database, store: EventStore
-    ) -> None:
+    def test_chronotype_analysis_with_data(self, db: Database, store: EventStore) -> None:
         habit_id = store.create_habit(name="Chrono data")
         store.log_habit(habit_id)
         store.log_habit(habit_id)

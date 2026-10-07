@@ -101,9 +101,7 @@ class Database:
     """DuckDB database for Lifekit storage."""
 
     def __init__(self, db_path: Path | str = ":memory:"):
-        self.db_path: Path | str = (
-            Path(db_path) if db_path != ":memory:" else db_path
-        )
+        self.db_path: Path | str = Path(db_path) if db_path != ":memory:" else db_path
         self._conn: duckdb.DuckDBPyConnection | None = None
 
     @property
