@@ -37,4 +37,7 @@ def test_request_uses_default_model(db: Database, monkeypatch: pytest.MonkeyPatc
         text = _generate(db)
 
     assert text == "A quiet week."
-    assert client.messages.create.call_args.kwargs["model"] == narrative.DEFAULT_MODEL
+    kwargs = client.messages.create.call_args.kwargs
+    assert kwargs["model"] == narrative.DEFAULT_MODEL
+    # A thinking block counts toward max_tokens, so leave room beyond the ~600 of text.
+    assert kwargs["max_tokens"] >= 1500

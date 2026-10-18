@@ -124,7 +124,9 @@ Just observe patterns and reflect thoughtfully. Focus on what the data shows."""
 
     response = client.messages.create(
         model=DEFAULT_MODEL,
-        max_tokens=600,
+        # Reason: thinking blocks count toward max_tokens; 2-3 paragraphs need ~600 of text,
+        # so 600 alone left the text block cut short or missing when the model thought first.
+        max_tokens=2000,
         messages=[{"role": "user", "content": prompt}],
     )
     # Reason: the model may return a thinking block before the text block.
