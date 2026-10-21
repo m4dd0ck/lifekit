@@ -30,7 +30,7 @@ uv run lk stats
 
 ## Commands
 
-Every command accepts `--db-path` / `-d` (default `~/.lifekit/data.db`). The table is
+Every subcommand accepts `--db-path` / `-d` (default `~/.lifekit/data.db`). The table is
 regenerated from `lk --help` by the doc check; edit the help strings in
 `src/lifekit/cli/main.py`, not the table.
 
@@ -129,7 +129,6 @@ models are exercised by the tests.
 |---|---|---|
 | The database | `~/.lifekit/data.db` unless `--db-path` says otherwise | the only copy of the data; nothing backs it up |
 | Anthropic API key | `ANTHROPIC_API_KEY` in the environment | needed by `lk narrative` only; never in the repo |
-| Cross-repo docs | `~/developer/hq` | the repo map, conventions and open items |
 
 ## Vocabulary
 
@@ -154,7 +153,7 @@ tables are its projection, updated once as the event is appended.
   and `goal list`, and says the event log is not replayed.
 - **2026-10-17** The narrative's token budget was raised so a thinking block does not crowd out
   the text.
-- **2026-10-17** CI comes from the shared template in `~/.claude/templates/python-repo/`.
+- **2026-10-17** CI comes from the owner's shared workflow template.
 
 ## History
 
@@ -166,7 +165,7 @@ tables are its projection, updated once as the event is appended.
 
 ## Development
 
-The validate list is `RUNBOOK.md` §Validate (lint, format, types, tests, doc check). Line
+The checks are `RUNBOOK.md` §On close (lint, format, types, tests). Line
 length 100; ruff rules E, F, I, UP; mypy as configured in `pyproject.toml`. Commits
 `type(scope): Description`, body says why, no AI attribution.
 

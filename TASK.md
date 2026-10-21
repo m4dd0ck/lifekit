@@ -1,13 +1,10 @@
 # Tasks
 
-Single-repo status. Hand-kept; dates are absolute. Last reviewed **2026-10-20**. Cross-repo
-items are in `~/developer/hq/OPEN_ITEMS.md`.
+Single-repo status, kept by hand. Last reviewed **2026-10-20**.
 
 ## Needs the owner
 
-| Item | Why it is stuck | Added |
-|---|---|---|
-| **Move the clone under `~/developer/portfolio/`** | The repo map's verdict is keep and move; the move is in hq OPEN_ITEMS §Codebase review and waits on the owner's sign-off. Nothing imports lifekit and no path points at it, so the move is a `mv` plus the hq index | 2026-10-16 |
+Nothing.
 
 ## Queue
 
@@ -21,7 +18,7 @@ From the 2026-10-07 inventory; none started.
 | Goal lookup is a partial match | `get_goal_by_outcome` uses `ILIKE '%x%'` and takes the first row, so an ambiguous name picks an arbitrary goal; `get_habit_by_name` is exact and allows duplicate names |
 | Narrative input window | The CLI fetches `days * 2` logs and `days * 3` entries instead of filtering by date, so "this week" can include older data |
 | `get_overview_stats` placement | Lives in `correlations.py` and is not exported from `analytics`; the CLI imports it directly |
-| PRP file references | `PRPs/lifekit-mvp.md` points at the old `~/portfolio/...` paths of metricforge and resolve-ai; they live under `~/developer/portfolio/` now |
+| PRP file references | `PRPs/lifekit-mvp.md` names sibling-repo paths from the machine it was written on; it is the historical build spec, leave or annotate |
 
 ## Parked: future features
 

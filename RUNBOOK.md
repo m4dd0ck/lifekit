@@ -26,8 +26,6 @@ use. For `lk narrative`, export `ANTHROPIC_API_KEY` first.
 
 ## Release
 
-Follows `~/developer/hq/CONVENTIONS.md` §Versioning (portfolio repos):
-
 1. On close checks green.
 2. Bump `version` in `pyproject.toml` and `__version__` in `src/lifekit/__init__.py`, then
    `uv lock`, in one `chore: Release vX.Y.Z` commit.
@@ -39,13 +37,3 @@ Follows `~/developer/hq/CONVENTIONS.md` §Versioning (portfolio repos):
 1. Clone the repo and `uv sync`.
 2. Copy the old `~/.lifekit/data.db` across if the data is wanted; nothing else backs it up.
 3. Export `ANTHROPIC_API_KEY` if the narrative is used.
-
-## Validate
-
-```bash
-uv run ruff check .
-uv run ruff format --check .
-uv run mypy src/
-uv run pytest -q
-python3 ~/.claude/scripts/doc-check.py --repo .
-```
