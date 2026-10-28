@@ -114,7 +114,7 @@ models are exercised by the tests.
 |---|---|---|
 | `src/lifekit/cli/main.py` | the Typer app: `habit`, `journal`, `goal`, `stats` groups plus `narrative` and `letter` | yes |
 | `src/lifekit/storage/` | `database.py` (schema, projection, queries) and `events.py` (the event store) | yes |
-| `src/lifekit/analytics/` | `streaks.py`, `trends.py`, `correlations.py` | yes |
+| `src/lifekit/analytics/` | `streaks.py`, `trends.py`, `correlations.py`, `overview.py` | yes |
 | `src/lifekit/ai/narrative.py` | the weekly narrative | yes |
 | `src/lifekit/models/` | Pydantic models for events, habits, journal entries, goals | yes |
 | `tests/` | one file per package; the CLI tests run against a temporary DuckDB file | yes |

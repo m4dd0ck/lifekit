@@ -5,11 +5,11 @@ from datetime import date
 from lifekit.analytics import (
     calculate_streak,
     chronotype_analysis,
+    get_overview_stats,
     habit_completion_trend,
     mood_habit_correlation,
     mood_trend,
 )
-from lifekit.analytics.correlations import get_overview_stats
 from lifekit.storage.database import Database
 from lifekit.storage.events import EventStore
 
