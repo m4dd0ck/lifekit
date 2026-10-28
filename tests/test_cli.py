@@ -4,12 +4,16 @@ import os
 import re
 import tempfile
 import warnings
+from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 from click.testing import Result
 from typer.testing import CliRunner
 
 from lifekit.cli.main import app
+from lifekit.models import Event, EventType
+from lifekit.storage.database import Database
 
 runner = CliRunner()
 
@@ -205,6 +209,43 @@ class TestStatsCommands:
     def test_stats_correlations(self, temp_db: str) -> None:
         result = runner.invoke(app, ["stats", "correlations", "-d", temp_db])
         assert result.exit_code == 0
+
+
+class TestNarrativeCommand:
+    def test_narrative_input_is_limited_to_the_window(self, temp_db: str) -> None:
+        runner.invoke(app, ["habit", "add", "Run", "-d", temp_db])
+        runner.invoke(app, ["habit", "log", "Run", "-d", temp_db])
+        runner.invoke(app, ["journal", "write", "This week", "-d", temp_db])
+        db = Database(temp_db)
+        (habit,) = db.get_habits()
+        thirty_days_ago = datetime.now() - timedelta(days=30)
+        db.append_event(
+            Event(
+                event_type=EventType.HABIT_LOGGED,
+                entity_id=habit["habit_id"],
+                timestamp=thirty_days_ago,
+                data={"log_id": "old-log", "completed": True},
+            )
+        )
+        db.append_event(
+            Event(
+                event_type=EventType.JOURNAL_ENTRY_CREATED,
+                entity_id="old-entry",
+                timestamp=thirty_days_ago,
+                data={"content": "Long ago"},
+            )
+        )
+        db.close()
+
+        with patch("lifekit.cli.main.generate_weekly_narrative", return_value="ok") as generate:
+            result = runner.invoke(app, ["narrative", "--days", "7", "-d", temp_db])
+
+        assert result.exit_code == 0, result.output
+        kwargs = generate.call_args.kwargs
+        assert [e["content"] for e in kwargs["journal_entries"]] == ["This week"]
+        (logs,) = kwargs["habit_logs"].values()
+        assert len(logs) == 1
+        assert logs[0]["log_id"] != "old-log"
 
 
 class TestLetterCommand:

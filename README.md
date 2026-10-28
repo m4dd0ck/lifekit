@@ -105,10 +105,11 @@ average journal mood on days a habit was done against days it was not (a differe
 not a coefficient), and `chronotype_analysis` counts completions by hour. Habits with fewer than
 three days of data are left out of `stats correlations`.
 
-**Narrative.** `lk narrative` formats recent habit logs and journal entries into a prompt and
-asks the model named in `src/lifekit/ai/narrative.py` for a short story of the week. It needs
-`ANTHROPIC_API_KEY` in the environment and prints a message instead of failing when the key is
-missing. The token budget leaves room for a thinking block before the text.
+**Narrative.** `lk narrative` formats the habit logs and journal entries of the last `--days`
+calendar days (the same window as `stats mood`) into a prompt and asks the model named in
+`src/lifekit/ai/narrative.py` for a short story of the week. It needs `ANTHROPIC_API_KEY` in
+the environment and prints a message instead of failing when the key is missing. The token
+budget leaves room for a thinking block before the text.
 
 **Models and validation.** `models/` holds the Pydantic models for events, habits, journal
 entries and goals. The store builds the model for every write, so an out-of-range rating, an

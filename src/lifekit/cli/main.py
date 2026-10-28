@@ -2,7 +2,7 @@
 
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -568,13 +568,14 @@ def narrative(
 ) -> None:
     """Generate AI weekly narrative."""
     db = get_db(db_path)
+    # Reason: the same calendar window mood_trend uses, so every section describes one period.
+    since = datetime.combine(date.today() - timedelta(days=days - 1), time.min)
 
     habits = db.get_habits()
-    habit_logs = {}
-    for habit in habits:
-        habit_logs[habit["habit_id"]] = db.get_habit_logs(habit["habit_id"], limit=days * 2)
-
-    entries = db.get_journal_entries(limit=days * 3)
+    habit_logs = {
+        habit["habit_id"]: db.get_habit_logs_since(habit["habit_id"], since) for habit in habits
+    }
+    entries = db.get_journal_entries_since(since)
     trend = mood_trend(db, days=days)
 
     console.print("[dim]Generating narrative...[/dim]\n")

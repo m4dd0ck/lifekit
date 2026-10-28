@@ -1,6 +1,7 @@
 """DuckDB storage layer for Lifekit."""
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -339,6 +340,17 @@ class Database:
             [habit_id, limit],
         )
 
+    def get_habit_logs_since(self, habit_id: str, since: datetime) -> list[dict]:
+        """Every log of a habit at or after ``since``, newest first."""
+        return self._fetch_dicts(
+            """
+            SELECT * FROM habit_logs
+            WHERE habit_id = ? AND completed_at >= ?
+            ORDER BY completed_at DESC
+            """,
+            [habit_id, since],
+        )
+
     def get_journal_entries(self, limit: int = 30) -> list[dict]:
         return self._journal_rows(
             """
@@ -347,6 +359,17 @@ class Database:
             LIMIT ?
             """,
             [limit],
+        )
+
+    def get_journal_entries_since(self, since: datetime) -> list[dict]:
+        """Every journal entry written at or after ``since``, newest first."""
+        return self._journal_rows(
+            """
+            SELECT * FROM journal_entries
+            WHERE created_at >= ?
+            ORDER BY created_at DESC
+            """,
+            [since],
         )
 
     def search_journal(self, query: str) -> list[dict]:

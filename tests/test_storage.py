@@ -321,3 +321,38 @@ class TestLookupByName:
             store.create_goal(outcome="run a 5k")
 
         assert len(db.get_goals()) == 1
+
+
+def _append_old_event(db: Database, event_type: EventType, entity_id: str, data: dict) -> None:
+    db.append_event(
+        Event(
+            event_type=event_type,
+            entity_id=entity_id,
+            timestamp=datetime.now() - timedelta(days=30),
+            data=data,
+        )
+    )
+
+
+class TestDateWindows:
+    def test_habit_logs_since_excludes_older_logs(
+        self, store: EventStore, db: Database, sample_habit_id: str
+    ) -> None:
+        _append_old_event(
+            db, EventType.HABIT_LOGGED, sample_habit_id, {"log_id": "old", "completed": True}
+        )
+        recent_id = store.log_habit(sample_habit_id)
+
+        logs = db.get_habit_logs_since(sample_habit_id, datetime.now() - timedelta(days=7))
+
+        assert [log["log_id"] for log in logs] == [recent_id]
+
+    def test_journal_entries_since_excludes_older_entries(
+        self, store: EventStore, db: Database
+    ) -> None:
+        _append_old_event(db, EventType.JOURNAL_ENTRY_CREATED, "old", {"content": "Long ago"})
+        store.create_journal_entry(content="This week")
+
+        entries = db.get_journal_entries_since(datetime.now() - timedelta(days=7))
+
+        assert [entry["content"] for entry in entries] == ["This week"]
