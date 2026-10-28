@@ -9,7 +9,7 @@ class Habit(BaseModel):
     """A habit to track."""
 
     habit_id: str
-    name: str
+    name: str = Field(min_length=1)
     description: str | None = None
     why: str | None = None
     tiny_version: str | None = None

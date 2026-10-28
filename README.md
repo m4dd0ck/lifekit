@@ -104,9 +104,12 @@ asks the model named in `src/lifekit/ai/narrative.py` for a short story of the w
 `ANTHROPIC_API_KEY` in the environment and prints a message instead of failing when the key is
 missing. The token budget leaves room for a thinking block before the text.
 
-**Models.** `models/` holds the Pydantic models for events, habits, journal entries and goals.
-At runtime the CLI validates ranges through Typer and passes plain values to the store; the
-models are exercised by the tests.
+**Models and validation.** `models/` holds the Pydantic models for events, habits, journal
+entries and goals. The store builds the model for every write, so an out-of-range rating, an
+empty name or a progress outside 0-100 is rejected with a one-line `InvalidValueError` before
+any event is appended; the CLI prints that line (`Error: mood_after: Input should be less than
+or equal to 5`) and exits 1. Typer checks the same ranges at the flag level, so most bad input
+never reaches the store. `errors.py` holds the exception hierarchy under `LifekitError`.
 
 ## Layout
 
@@ -117,6 +120,7 @@ models are exercised by the tests.
 | `src/lifekit/analytics/` | `streaks.py`, `trends.py`, `correlations.py`, `overview.py` | yes |
 | `src/lifekit/ai/narrative.py` | the weekly narrative | yes |
 | `src/lifekit/models/` | Pydantic models for events, habits, journal entries, goals | yes |
+| `src/lifekit/errors.py` | `LifekitError` and its subclasses; the CLI prints these, anything else is a bug | yes |
 | `tests/` | one file per package; the CLI tests run against a temporary DuckDB file | yes |
 | `PRPs/lifekit-mvp.md` | the build spec the code was written from | yes |
 | `BRAINSTORM.md` | the design document: ideas, research on what to track, the synthesised data model | yes |
@@ -154,6 +158,9 @@ tables are its projection, updated once as the event is appended.
 - **2026-10-17** The narrative's token budget was raised so a thinking block does not crowd out
   the text.
 - **2026-10-17** CI comes from the owner's shared workflow template.
+- **2026-10-28** The store validates every write by building its Pydantic model, rather than
+  trusting the CLI: the models already carried the ranges, and a second caller (tests, a future
+  UI) would otherwise write anything.
 
 ## History
 

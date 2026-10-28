@@ -4,7 +4,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import duckdb
+import pytest
 
+from lifekit.errors import InvalidValueError
 from lifekit.models import EventType
 from lifekit.storage.database import Database
 from lifekit.storage.events import EventStore
@@ -205,3 +207,51 @@ class TestEventStore:
 
         events = store.get_events_since(days=1)
         assert len(events) >= 1
+
+
+class TestStoreValidation:
+    """The store is the boundary: bad values are rejected before any event is written."""
+
+    def test_log_habit_rejects_out_of_range_mood(
+        self, store: EventStore, db: Database, sample_habit_id: str
+    ) -> None:
+        with pytest.raises(InvalidValueError, match="mood_after"):
+            store.log_habit(sample_habit_id, mood_after=99)
+
+        assert db.get_habit_logs(sample_habit_id) == []
+        assert db.get_events(event_type=EventType.HABIT_LOGGED) == []
+
+    def test_journal_entry_rejects_mood_above_ten(self, store: EventStore, db: Database) -> None:
+        with pytest.raises(InvalidValueError, match="mood"):
+            store.create_journal_entry(content="Too happy", mood=11)
+
+        assert db.get_journal_entries() == []
+
+    def test_update_progress_rejects_values_outside_0_to_100(
+        self, store: EventStore, db: Database
+    ) -> None:
+        goal_id = store.create_goal(outcome="Bounded")
+
+        with pytest.raises(InvalidValueError, match="progress"):
+            store.update_progress(goal_id, 150)
+
+        goal = db.get_goal_by_outcome("Bounded")
+        assert goal is not None
+        assert goal["progress"] == 0
+
+    def test_create_habit_rejects_empty_name(self, store: EventStore, db: Database) -> None:
+        with pytest.raises(InvalidValueError, match="name"):
+            store.create_habit(name="")
+
+        assert db.get_habits() == []
+
+    def test_error_message_is_one_readable_line(
+        self, store: EventStore, sample_habit_id: str
+    ) -> None:
+        with pytest.raises(InvalidValueError) as excinfo:
+            store.log_habit(sample_habit_id, mood_after=0, quality=6)
+
+        message = str(excinfo.value)
+        assert "\n" not in message
+        assert "mood_after" in message
+        assert "quality" in message

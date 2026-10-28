@@ -10,7 +10,7 @@ class JournalEntry(BaseModel):
 
     entry_id: str
     created_at: datetime
-    content: str
+    content: str = Field(min_length=1)
     mood: int | None = Field(default=None, ge=1, le=10)
     energy: int | None = Field(default=None, ge=1, le=5)
     gratitude: str | None = None

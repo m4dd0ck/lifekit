@@ -1,11 +1,14 @@
 """CLI for Lifekit - personal management system."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
 
@@ -17,6 +20,7 @@ from lifekit.analytics import (
     mood_habit_correlation,
     mood_trend,
 )
+from lifekit.errors import LifekitError
 from lifekit.storage.database import Database
 from lifekit.storage.events import EventStore
 
@@ -54,6 +58,16 @@ def get_store(db_path: str) -> EventStore:
     return EventStore(get_db(db_path))
 
 
+@contextmanager
+def exit_on_error() -> Iterator[None]:
+    """Print a Lifekit error as one red line and exit 1 instead of showing a traceback."""
+    try:
+        yield
+    except LifekitError as exc:
+        console.print(f"[red]Error:[/red] {escape(str(exc))}")
+        raise typer.Exit(1) from None
+
+
 # Habit commands
 
 
@@ -71,12 +85,13 @@ def habit_add(
 ) -> None:
     """Add a new habit to track."""
     store = get_store(db_path)
-    store.create_habit(
-        name=name,
-        description=description,
-        why=why,
-        tiny_version=tiny,
-    )
+    with exit_on_error():
+        store.create_habit(
+            name=name,
+            description=description,
+            why=why,
+            tiny_version=tiny,
+        )
     console.print(f"[green]Created habit:[/green] {name}")
     if why:
         console.print("[dim]Sealed your letter to your future self.[/dim]")
@@ -109,14 +124,15 @@ def habit_log(
         console.print(f"[red]Habit not found:[/red] {name}")
         raise typer.Exit(1)
 
-    store.log_habit(
-        habit_id=habit["habit_id"],
-        mood_after=mood,
-        energy_before=energy,
-        difficulty=difficulty,
-        quality=quality,
-        context=context,
-    )
+    with exit_on_error():
+        store.log_habit(
+            habit_id=habit["habit_id"],
+            mood_after=mood,
+            energy_before=energy,
+            difficulty=difficulty,
+            quality=quality,
+            context=context,
+        )
     console.print(f"[green]Logged:[/green] {name}")
 
 
@@ -238,12 +254,13 @@ def journal_write(
         content = typer.prompt("What's on your mind?")
 
     store = get_store(db_path)
-    store.create_journal_entry(
-        content=content,
-        mood=mood,
-        energy=energy,
-        gratitude=gratitude,
-    )
+    with exit_on_error():
+        store.create_journal_entry(
+            content=content,
+            mood=mood,
+            energy=energy,
+            gratitude=gratitude,
+        )
     console.print("[green]Journal entry saved.[/green]")
 
 
@@ -334,7 +351,8 @@ def goal_add(
             console.print("[red]Invalid date format. Use YYYY-MM-DD[/red]")
             raise typer.Exit(1)
 
-    store.create_goal(outcome=outcome, deadline=deadline_dt)
+    with exit_on_error():
+        store.create_goal(outcome=outcome, deadline=deadline_dt)
     console.print(f"[green]Created goal:[/green] {outcome}")
 
 
@@ -353,7 +371,8 @@ def goal_milestone(
         console.print(f"[red]Goal not found:[/red] {goal}")
         raise typer.Exit(1)
 
-    store.add_milestone(goal_id=goal_data["goal_id"], description=description)
+    with exit_on_error():
+        store.add_milestone(goal_id=goal_data["goal_id"], description=description)
     console.print(f"[green]Added milestone:[/green] {description}")
 
 
@@ -372,7 +391,8 @@ def goal_progress(
         console.print(f"[red]Goal not found:[/red] {goal}")
         raise typer.Exit(1)
 
-    store.update_progress(goal_id=goal_data["goal_id"], progress=progress)
+    with exit_on_error():
+        store.update_progress(goal_id=goal_data["goal_id"], progress=progress)
     console.print(f"[green]Updated progress:[/green] {progress}%")
 
     if progress >= 100:

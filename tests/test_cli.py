@@ -32,6 +32,15 @@ class TestHabitCommands:
         assert result.exit_code == 0
         assert "Created habit" in result.stdout
 
+    def test_habit_add_empty_name_shows_error_not_traceback(self, temp_db: str) -> None:
+        result = runner.invoke(app, ["habit", "add", "", "-d", temp_db])
+
+        assert result.exit_code == 1
+        assert "Error" in result.stdout
+        assert "name" in result.stdout
+        assert "Traceback" not in result.output
+        assert isinstance(result.exception, SystemExit)
+
     def test_habit_list_empty(self, temp_db: str) -> None:
         result = runner.invoke(app, ["habit", "list", "-d", temp_db])
         assert result.exit_code == 0
