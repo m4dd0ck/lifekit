@@ -1,6 +1,9 @@
 """Tests for Lifekit storage layer."""
 
 from datetime import datetime, timedelta
+from pathlib import Path
+
+import duckdb
 
 from lifekit.models import EventType
 from lifekit.storage.database import Database
@@ -35,6 +38,40 @@ class TestDatabase:
         prompt = db.get_random_prompt(category="gratitude")
         assert prompt is not None
         assert prompt["category"] == "gratitude"
+
+    def test_rows_map_by_column_name_not_position(self, tmp_path: Path) -> None:
+        # Reason: a file whose habits table has the same columns in another order must still
+        # read back correctly; positional indices would swap name and description.
+        db_path = tmp_path / "reordered.db"
+        conn = duckdb.connect(str(db_path))
+        conn.execute(
+            """
+            CREATE TABLE habits (
+                description TEXT,
+                name TEXT NOT NULL,
+                habit_id TEXT PRIMARY KEY,
+                archived_at TIMESTAMP,
+                created_at TIMESTAMP NOT NULL,
+                tiny_version TEXT,
+                why TEXT
+            )
+            """
+        )
+        conn.close()
+
+        database = Database(db_path)
+        store = EventStore(database)
+        habit_id = store.create_habit(name="Stretch", description="Ten minutes", why="Back")
+
+        habit = database.get_habit_by_name("Stretch")
+        assert habit is not None
+        assert habit["habit_id"] == habit_id
+        assert habit["name"] == "Stretch"
+        assert habit["description"] == "Ten minutes"
+        assert habit["why"] == "Back"
+        assert habit["archived_at"] is None
+        assert [h["name"] for h in database.get_habits()] == ["Stretch"]
+        database.close()
 
 
 class TestEventStore:

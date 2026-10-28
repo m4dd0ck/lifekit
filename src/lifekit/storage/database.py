@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from typing import Any
 
 import duckdb
 import structlog
@@ -258,6 +259,16 @@ class Database:
                 [event.timestamp, event.entity_id],
             )
 
+    def _fetch_dicts(self, query: str, params: list | None = None) -> list[dict]:
+        """Run a query and return one dict per row, keyed by column name."""
+        cursor = self.conn.execute(query, params or [])
+        columns = [column[0] for column in cursor.description or []]
+        return [dict(zip(columns, row, strict=True)) for row in cursor.fetchall()]
+
+    def _fetch_dict(self, query: str, params: list | None = None) -> dict | None:
+        rows = self._fetch_dicts(query, params)
+        return rows[0] if rows else None
+
     def get_events(
         self,
         event_type: EventType | None = None,
@@ -278,59 +289,31 @@ class Database:
             params.append(since)
 
         query += " ORDER BY timestamp ASC"
-        results = self.conn.execute(query, params).fetchall()
-
-        events = []
-        for row in results:
-            events.append(
-                Event(
-                    event_id=row[0],
-                    event_type=EventType(row[1]),
-                    timestamp=row[2],
-                    entity_id=row[3],
-                    data=json.loads(row[4]) if isinstance(row[4], str) else row[4],
-                )
+        return [
+            Event(
+                event_id=row["event_id"],
+                event_type=EventType(row["event_type"]),
+                timestamp=row["timestamp"],
+                entity_id=row["entity_id"],
+                data=_load_json(row["data"]),
             )
-        return events
+            for row in self._fetch_dicts(query, params)
+        ]
 
     def get_habits(self, include_archived: bool = False) -> list[dict]:
         query = "SELECT * FROM habits"
         if not include_archived:
             query += " WHERE archived_at IS NULL"
         query += " ORDER BY created_at DESC"
-
-        results = self.conn.execute(query).fetchall()
-        return [
-            {
-                "habit_id": r[0],
-                "name": r[1],
-                "description": r[2],
-                "why": r[3],
-                "tiny_version": r[4],
-                "created_at": r[5],
-                "archived_at": r[6],
-            }
-            for r in results
-        ]
+        return self._fetch_dicts(query)
 
     def get_habit_by_name(self, name: str) -> dict | None:
-        result = self.conn.execute(
+        return self._fetch_dict(
             "SELECT * FROM habits WHERE name = ? AND archived_at IS NULL", [name]
-        ).fetchone()
-        if not result:
-            return None
-        return {
-            "habit_id": result[0],
-            "name": result[1],
-            "description": result[2],
-            "why": result[3],
-            "tiny_version": result[4],
-            "created_at": result[5],
-            "archived_at": result[6],
-        }
+        )
 
     def get_habit_logs(self, habit_id: str, limit: int = 30) -> list[dict]:
-        results = self.conn.execute(
+        return self._fetch_dicts(
             """
             SELECT * FROM habit_logs
             WHERE habit_id = ?
@@ -338,68 +321,33 @@ class Database:
             LIMIT ?
             """,
             [habit_id, limit],
-        ).fetchall()
-        return [
-            {
-                "log_id": r[0],
-                "habit_id": r[1],
-                "completed_at": r[2],
-                "completed": r[3],
-                "context": r[4],
-                "mood_after": r[5],
-                "energy_before": r[6],
-                "difficulty": r[7],
-                "quality": r[8],
-                "notes": r[9],
-            }
-            for r in results
-        ]
+        )
 
     def get_journal_entries(self, limit: int = 30) -> list[dict]:
-        results = self.conn.execute(
+        return self._journal_rows(
             """
             SELECT * FROM journal_entries
             ORDER BY created_at DESC
             LIMIT ?
             """,
             [limit],
-        ).fetchall()
-        return [
-            {
-                "entry_id": r[0],
-                "created_at": r[1],
-                "content": r[2],
-                "mood": r[3],
-                "energy": r[4],
-                "gratitude": r[5],
-                "prompt_id": r[6],
-                "tags": json.loads(r[7]) if isinstance(r[7], str) else r[7],
-            }
-            for r in results
-        ]
+        )
 
     def search_journal(self, query: str) -> list[dict]:
-        results = self.conn.execute(
+        return self._journal_rows(
             """
             SELECT * FROM journal_entries
             WHERE content ILIKE ?
             ORDER BY created_at DESC
             """,
             [f"%{query}%"],
-        ).fetchall()
-        return [
-            {
-                "entry_id": r[0],
-                "created_at": r[1],
-                "content": r[2],
-                "mood": r[3],
-                "energy": r[4],
-                "gratitude": r[5],
-                "prompt_id": r[6],
-                "tags": json.loads(r[7]) if isinstance(r[7], str) else r[7],
-            }
-            for r in results
-        ]
+        )
+
+    def _journal_rows(self, query: str, params: list) -> list[dict]:
+        rows = self._fetch_dicts(query, params)
+        for row in rows:
+            row["tags"] = _load_json(row["tags"])
+        return rows
 
     def get_goals(self, status: str | None = None) -> list[dict]:
         query = "SELECT * FROM goals"
@@ -408,57 +356,22 @@ class Database:
             query += " WHERE status = ?"
             params.append(status)
         query += " ORDER BY created_at DESC"
-
-        results = self.conn.execute(query, params).fetchall()
-        return [
-            {
-                "goal_id": r[0],
-                "outcome": r[1],
-                "deadline": r[2],
-                "created_at": r[3],
-                "completed_at": r[4],
-                "status": r[5],
-                "progress": r[6],
-            }
-            for r in results
-        ]
+        return self._fetch_dicts(query, params)
 
     def get_goal_by_outcome(self, outcome: str) -> dict | None:
-        result = self.conn.execute(
-            "SELECT * FROM goals WHERE outcome ILIKE ?", [f"%{outcome}%"]
-        ).fetchone()
-        if not result:
-            return None
-        return {
-            "goal_id": result[0],
-            "outcome": result[1],
-            "deadline": result[2],
-            "created_at": result[3],
-            "completed_at": result[4],
-            "status": result[5],
-            "progress": result[6],
-        }
+        return self._fetch_dict("SELECT * FROM goals WHERE outcome ILIKE ?", [f"%{outcome}%"])
 
     def get_milestones(self, goal_id: str) -> list[dict]:
-        results = self.conn.execute(
+        return self._fetch_dicts(
             """
-            SELECT * FROM milestones
+            SELECT milestone_id, goal_id, description, target_date, completed_at,
+                milestone_order AS "order"
+            FROM milestones
             WHERE goal_id = ?
             ORDER BY milestone_order ASC
             """,
             [goal_id],
-        ).fetchall()
-        return [
-            {
-                "milestone_id": r[0],
-                "goal_id": r[1],
-                "description": r[2],
-                "target_date": r[3],
-                "completed_at": r[4],
-                "order": r[5],
-            }
-            for r in results
-        ]
+        )
 
     def get_random_prompt(self, category: str | None = None) -> dict | None:
         query = "SELECT * FROM prompts"
@@ -467,12 +380,9 @@ class Database:
             query += " WHERE category = ?"
             params.append(category)
         query += " ORDER BY RANDOM() LIMIT 1"
+        return self._fetch_dict(query, params)
 
-        result = self.conn.execute(query, params).fetchone()
-        if not result:
-            return None
-        return {
-            "prompt_id": result[0],
-            "text": result[1],
-            "category": result[2],
-        }
+
+def _load_json(value: Any) -> Any:
+    """Decode a JSON column, which DuckDB may hand back already parsed or as text."""
+    return json.loads(value) if isinstance(value, str) else value
