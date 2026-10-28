@@ -39,6 +39,7 @@ regenerated from `lk --help` by the doc check; edit the help strings in
 | Command | What it does |
 |---|---|
 | `lk narrative` | Generate AI weekly narrative. |
+| `lk rebuild` | Rebuild the current-state tables from the event log. |
 | `lk letter` | Read the sealed letter for a habit. |
 | `lk habit` | Habit tracking commands |
 | `lk journal` | Journal commands |
@@ -79,6 +80,9 @@ lk narrative --days 7
 
 # Sealed letters
 lk letter "Morning run"
+
+# Maintenance
+lk rebuild                 # reconstruct the state tables from the event log
 ```
 
 Habit `--mood`, `--energy`, `--difficulty` and `--quality` take 1-5. Journal `--mood` takes
@@ -87,11 +91,14 @@ Habit `--mood`, `--energy`, `--difficulty` and `--quality` take 1-5. Journal `--
 ## How it works
 
 **Storage.** Every change is written to an append-only `events` table and then applied to plain
-current-state tables (`habits`, `habit_logs`, `journal_entries`, `goals`, `milestones`,
-`prompts`) in the same DuckDB file. The event log is the record of what happened; the tables are
-what the CLI reads. There is no replay or rebuild step. `storage/database.py` owns the schema and
-the per-event projection; `storage/events.py` exposes one method per command. A new database is
-seeded with the default journal prompts in four categories.
+current-state tables (`habits`, `habit_logs`, `journal_entries`, `goals`, `milestones`) in the
+same DuckDB file. The event log is the record of what happened; the tables are what the CLI
+reads. `lk rebuild` empties the state tables and replays the whole log through the same
+per-event projection, in one transaction, so the tables can always be reconstructed from the
+log; it prints the row count of each table afterwards. `storage/database.py` owns the schema,
+the projection and the rebuild; `storage/events.py` exposes one method per command. A new
+database is seeded with the default journal prompts (`prompts`) in four categories; prompts are
+seeded, not event-sourced, and `rebuild` leaves them alone.
 
 **Names.** Commands refer to habits by name and to goals by outcome. The match is exact (any
 case for goals) and only active habits and goals count, so `habit add` refuses a name an active
@@ -152,7 +159,8 @@ future self.
 `habit list --archived`.
 
 **Event and current state.** An event is the immutable record of one change; the current-state
-tables are its projection, updated once as the event is appended.
+tables are its projection, updated once as the event is appended and rebuilt from the whole log
+by `lk rebuild`.
 
 ## Decisions
 
@@ -168,6 +176,9 @@ tables are its projection, updated once as the event is appended.
 - **2026-10-28** The store validates every write by building its Pydantic model, rather than
   trusting the CLI: the models already carried the ranges, and a second caller (tests, a future
   UI) would otherwise write anything.
+- **2026-10-28** `lk rebuild` replays the event log into the state tables. Inline projection
+  stays the normal path (2026-01-28); the rebuild exists so the log, not the tables, is the
+  copy that matters.
 - **2026-10-28** Goal lookup is exact among active goals, not a `%x%` match over all of them:
   a substring picked an arbitrary goal when several matched, and habits already worked this
   way. Duplicate active names are refused at creation so the lookup cannot be ambiguous.

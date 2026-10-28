@@ -356,3 +356,69 @@ class TestDateWindows:
         entries = db.get_journal_entries_since(datetime.now() - timedelta(days=7))
 
         assert [entry["content"] for entry in entries] == ["This week"]
+
+
+STATE_TABLES = ("habits", "habit_logs", "journal_entries", "goals", "milestones")
+
+
+def _snapshot(db: Database) -> dict[str, list[tuple]]:
+    return {
+        table: db.conn.execute(f"SELECT * FROM {table} ORDER BY 1").fetchall()
+        for table in STATE_TABLES
+    }
+
+
+class TestRebuild:
+    def test_rebuild_restores_deleted_and_corrupted_state(self, populated_db: Database) -> None:
+        store = EventStore(populated_db)
+        habit = populated_db.get_habit_by_name("Read")
+        store.archive_habit(habit["habit_id"])
+        before = _snapshot(populated_db)
+        assert all(rows for rows in before.values())
+
+        populated_db.conn.execute("DELETE FROM habit_logs")
+        populated_db.conn.execute("DELETE FROM milestones")
+        populated_db.conn.execute("UPDATE goals SET progress = 0, status = 'abandoned'")
+        populated_db.conn.execute("UPDATE habits SET archived_at = NULL, why = 'tampered'")
+        populated_db.conn.execute("UPDATE journal_entries SET mood = NULL")
+        assert _snapshot(populated_db) != before
+
+        counts = populated_db.rebuild_from_events()
+
+        assert _snapshot(populated_db) == before
+        assert counts == {table: len(rows) for table, rows in before.items()}
+
+    def test_rebuild_keeps_prompts_and_events(self, populated_db: Database) -> None:
+        prompts_before = populated_db.conn.execute("SELECT COUNT(*) FROM prompts").fetchone()
+        events_before = populated_db.get_events()
+
+        populated_db.rebuild_from_events()
+
+        assert (
+            populated_db.conn.execute("SELECT COUNT(*) FROM prompts").fetchone() == prompts_before
+        )
+        assert populated_db.get_events() == events_before
+
+    def test_rebuild_applies_events_in_order_within_the_same_instant(self, db: Database) -> None:
+        # Reason: a goal created and updated in one microsecond must still end at 40, not 0.
+        instant = datetime(2026, 1, 1, 9, 0, 0)
+        db.append_event(
+            Event(
+                event_type=EventType.GOAL_CREATED,
+                entity_id="g1",
+                timestamp=instant,
+                data={"outcome": "Same instant", "deadline": None},
+            )
+        )
+        db.append_event(
+            Event(
+                event_type=EventType.GOAL_PROGRESS_UPDATED,
+                entity_id="g1",
+                timestamp=instant,
+                data={"progress": 40},
+            )
+        )
+
+        db.rebuild_from_events()
+
+        assert db.get_goal_by_outcome("Same instant")["progress"] == 40

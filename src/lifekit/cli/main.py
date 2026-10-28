@@ -591,6 +591,23 @@ def narrative(
     console.print(Panel(narrative_text, title="Weekly Narrative"))
 
 
+@app.command("rebuild")
+def rebuild(
+    db_path: str = DB_PATH_OPTION,
+) -> None:
+    """Rebuild the current-state tables from the event log."""
+    db = get_db(db_path)
+    counts = db.rebuild_from_events()
+
+    console.print("[green]Rebuilt current state from the event log.[/green]")
+    table = Table(show_header=False, box=None)
+    table.add_column("Table", style="dim")
+    table.add_column("Rows", style="bold", justify="right")
+    for name, count in counts.items():
+        table.add_row(name, str(count))
+    console.print(table)
+
+
 @app.command("letter")
 def letter(
     habit_name: Annotated[str, typer.Argument(help="Name of the habit")],

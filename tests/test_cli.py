@@ -248,6 +248,25 @@ class TestNarrativeCommand:
         assert logs[0]["log_id"] != "old-log"
 
 
+class TestRebuildCommand:
+    def test_rebuild_reports_counts_and_restores_state(self, temp_db: str) -> None:
+        runner.invoke(app, ["habit", "add", "Run", "-d", temp_db])
+        runner.invoke(app, ["habit", "log", "Run", "-d", temp_db])
+        db = Database(temp_db)
+        db.conn.execute("DELETE FROM habit_logs")
+        db.close()
+
+        result = runner.invoke(app, ["rebuild", "-d", temp_db])
+
+        assert result.exit_code == 0, result.output
+        assert "Rebuilt" in result.stdout
+        assert "habit_logs" in result.stdout
+        db = Database(temp_db)
+        (habit,) = db.get_habits()
+        assert len(db.get_habit_logs(habit["habit_id"])) == 1
+        db.close()
+
+
 class TestLetterCommand:
     def test_letter_with_why(self, temp_db: str) -> None:
         runner.invoke(

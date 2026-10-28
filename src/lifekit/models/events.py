@@ -1,8 +1,8 @@
 """Event models for Lifekit.
 
 Events are appended to the ``events`` table and applied once to the current-state
-tables as they are written. They are a record of what happened, not something the
-application replays.
+tables as they are written. ``lk rebuild`` replays the whole log to reconstruct those
+tables, so the log is the record of truth.
 """
 
 import uuid

@@ -27,7 +27,8 @@ CREATE INDEX IF NOT EXISTS idx_events_entity ON events(entity_id);
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
 
--- Current-state tables, updated once per event as it is appended (no replay)
+-- Current-state tables: updated once per event as it is appended, and rebuilt from the
+-- event log by `lk rebuild`
 CREATE TABLE IF NOT EXISTS habits (
     habit_id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -88,6 +89,9 @@ CREATE TABLE IF NOT EXISTS prompts (
 );
 """
 
+# Reason: these are projections of the event log; prompts are seeded, not event-sourced.
+STATE_TABLES = ("habits", "habit_logs", "journal_entries", "goals", "milestones")
+
 DEFAULT_PROMPTS = [
     ("p1", "What am I grateful for today?", "gratitude"),
     ("p2", "What challenged me today and what did I learn?", "reflection"),
@@ -147,6 +151,34 @@ class Database:
             ],
         )
         self._apply_event(event)
+
+    def rebuild_from_events(self) -> dict[str, int]:
+        """Rebuild the current-state tables from the event log.
+
+        Empties every state table and re-applies each event in order, inside one
+        transaction, so a failure leaves the tables as they were. The event log and the
+        seeded prompts are untouched.
+
+        Returns:
+            Row count per rebuilt table, keyed by table name.
+        """
+        self.conn.begin()
+        try:
+            for table in STATE_TABLES:
+                self.conn.execute(f"DELETE FROM {table}")
+            events = self.get_events()
+            for event in events:
+                self._apply_event(event)
+            self.conn.commit()
+        except Exception:
+            self.conn.rollback()
+            raise
+        counts = {}
+        for table in STATE_TABLES:
+            row = self.conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()
+            counts[table] = int(row[0]) if row else 0
+        log.info("state_rebuilt", events=len(events), **counts)
+        return counts
 
     def _apply_event(self, event: Event) -> None:
         data = event.data
@@ -290,7 +322,9 @@ class Database:
             query += " AND timestamp >= ?"
             params.append(since)
 
-        query += " ORDER BY timestamp ASC"
+        # Reason: rowid breaks ties between events written in the same microsecond, so a
+        # replay applies them in the order they were appended.
+        query += " ORDER BY timestamp ASC, rowid ASC"
         return [
             Event(
                 event_id=row["event_id"],
