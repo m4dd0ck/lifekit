@@ -1,6 +1,6 @@
 # Tasks
 
-Single-repo status, kept by hand. Last reviewed **2026-10-20**.
+Single-repo status, kept by hand. Last reviewed **2026-10-28**.
 
 ## Needs the owner
 
@@ -8,16 +8,11 @@ Nothing.
 
 ## Queue
 
-From the 2026-10-07 inventory; none started.
+From the 2026-10-07 inventory. The six code items (event replay, store validation, row
+mapping, goal lookup, narrative window, `get_overview_stats` placement) shipped 2026-10-28.
 
 | Item | Note |
 |---|---|
-| Event replay | The event log is append-only but nothing rebuilds the current-state tables from it; the README says so. A `rebuild` would make the event-sourcing claim real |
-| Validate at the store boundary | The Pydantic models are used only by tests; `EventStore` accepts any value (`log_habit(mood_after=99)` passes). Build the models in the store, or drop them |
-| `Database` row mapping | About 480 lines of `SELECT *` with positional indices; reordering a column breaks the mapping. Name columns or map by cursor description |
-| Goal lookup is a partial match | `get_goal_by_outcome` uses `ILIKE '%x%'` and takes the first row, so an ambiguous name picks an arbitrary goal; `get_habit_by_name` is exact and allows duplicate names |
-| Narrative input window | The CLI fetches `days * 2` logs and `days * 3` entries instead of filtering by date, so "this week" can include older data |
-| `get_overview_stats` placement | Lives in `correlations.py` and is not exported from `analytics`; the CLI imports it directly |
 | PRP file references | `PRPs/lifekit-mvp.md` names sibling-repo paths from the machine it was written on; it is the historical build spec, leave or annotate |
 
 ## Parked: future features
