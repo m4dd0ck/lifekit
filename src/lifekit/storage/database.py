@@ -7,6 +7,7 @@ from typing import Any
 import duckdb
 import structlog
 
+from lifekit.errors import AmbiguousNameError, NotFoundError
 from lifekit.models.events import Event, EventType
 
 log = structlog.get_logger()
@@ -307,10 +308,25 @@ class Database:
         query += " ORDER BY created_at DESC"
         return self._fetch_dicts(query)
 
-    def get_habit_by_name(self, name: str) -> dict | None:
-        return self._fetch_dict(
+    def get_habit_by_name(self, name: str) -> dict:
+        """Return the active habit with exactly this name.
+
+        Raises:
+            NotFoundError: No active habit has that name.
+            AmbiguousNameError: More than one does (possible in a database written before
+                duplicate names were refused).
+        """
+        rows = self._fetch_dicts(
             "SELECT * FROM habits WHERE name = ? AND archived_at IS NULL", [name]
         )
+        return _exactly_one(rows, kind="habit", name=name)
+
+    def has_habit(self, name: str) -> bool:
+        """Whether an active habit already has exactly this name."""
+        row = self.conn.execute(
+            "SELECT COUNT(*) FROM habits WHERE name = ? AND archived_at IS NULL", [name]
+        ).fetchone()
+        return bool(row and row[0])
 
     def get_habit_logs(self, habit_id: str, limit: int = 30) -> list[dict]:
         return self._fetch_dicts(
@@ -358,8 +374,27 @@ class Database:
         query += " ORDER BY created_at DESC"
         return self._fetch_dicts(query, params)
 
-    def get_goal_by_outcome(self, outcome: str) -> dict | None:
-        return self._fetch_dict("SELECT * FROM goals WHERE outcome ILIKE ?", [f"%{outcome}%"])
+    def get_goal_by_outcome(self, outcome: str) -> dict:
+        """Return the active goal whose outcome matches, ignoring case.
+
+        Raises:
+            NotFoundError: No active goal has that outcome.
+            AmbiguousNameError: More than one does (possible in a database written before
+                duplicate outcomes were refused).
+        """
+        rows = self._fetch_dicts(
+            "SELECT * FROM goals WHERE LOWER(outcome) = LOWER(?) AND status = 'active'",
+            [outcome],
+        )
+        return _exactly_one(rows, kind="goal", name=outcome)
+
+    def has_goal(self, outcome: str) -> bool:
+        """Whether an active goal already has this outcome, ignoring case."""
+        row = self.conn.execute(
+            "SELECT COUNT(*) FROM goals WHERE LOWER(outcome) = LOWER(?) AND status = 'active'",
+            [outcome],
+        ).fetchone()
+        return bool(row and row[0])
 
     def get_milestones(self, goal_id: str) -> list[dict]:
         return self._fetch_dicts(
@@ -381,6 +416,17 @@ class Database:
             params.append(category)
         query += " ORDER BY RANDOM() LIMIT 1"
         return self._fetch_dict(query, params)
+
+
+def _exactly_one(rows: list[dict], kind: str, name: str) -> dict:
+    if not rows:
+        raise NotFoundError(f"{kind.capitalize()} not found: {name}")
+    if len(rows) > 1:
+        raise AmbiguousNameError(
+            f"{len(rows)} active {kind}s are named '{name}'; "
+            f"finish or archive all but one before using the name"
+        )
+    return rows[0]
 
 
 def _load_json(value: Any) -> Any:

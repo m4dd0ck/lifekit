@@ -119,10 +119,8 @@ def habit_log(
     db = get_db(db_path)
     store = EventStore(db)
 
-    habit = db.get_habit_by_name(name)
-    if not habit:
-        console.print(f"[red]Habit not found:[/red] {name}")
-        raise typer.Exit(1)
+    with exit_on_error():
+        habit = db.get_habit_by_name(name)
 
     with exit_on_error():
         store.log_habit(
@@ -180,11 +178,8 @@ def habit_stats(
 ) -> None:
     """Show detailed stats for a habit."""
     db = get_db(db_path)
-    habit = db.get_habit_by_name(name)
-
-    if not habit:
-        console.print(f"[red]Habit not found:[/red] {name}")
-        raise typer.Exit(1)
+    with exit_on_error():
+        habit = db.get_habit_by_name(name)
 
     streak = calculate_streak(db, habit["habit_id"])
     chrono = chronotype_analysis(db, habit["habit_id"])
@@ -223,10 +218,8 @@ def habit_archive(
     db = get_db(db_path)
     store = EventStore(db)
 
-    habit = db.get_habit_by_name(name)
-    if not habit:
-        console.print(f"[red]Habit not found:[/red] {name}")
-        raise typer.Exit(1)
+    with exit_on_error():
+        habit = db.get_habit_by_name(name)
 
     store.archive_habit(habit["habit_id"])
     console.print(f"[yellow]Archived:[/yellow] {name}")
@@ -358,7 +351,7 @@ def goal_add(
 
 @goal_app.command("milestone")
 def goal_milestone(
-    goal: Annotated[str, typer.Argument(help="Goal name (partial match)")],
+    goal: Annotated[str, typer.Argument(help="Goal name (exact, any case)")],
     description: Annotated[str, typer.Argument(help="Milestone description")],
     db_path: str = DB_PATH_OPTION,
 ) -> None:
@@ -366,10 +359,8 @@ def goal_milestone(
     db = get_db(db_path)
     store = EventStore(db)
 
-    goal_data = db.get_goal_by_outcome(goal)
-    if not goal_data:
-        console.print(f"[red]Goal not found:[/red] {goal}")
-        raise typer.Exit(1)
+    with exit_on_error():
+        goal_data = db.get_goal_by_outcome(goal)
 
     with exit_on_error():
         store.add_milestone(goal_id=goal_data["goal_id"], description=description)
@@ -378,7 +369,7 @@ def goal_milestone(
 
 @goal_app.command("progress")
 def goal_progress(
-    goal: Annotated[str, typer.Argument(help="Goal name (partial match)")],
+    goal: Annotated[str, typer.Argument(help="Goal name (exact, any case)")],
     progress: Annotated[int, typer.Argument(help="Progress percentage (0-100)", min=0, max=100)],
     db_path: str = DB_PATH_OPTION,
 ) -> None:
@@ -386,10 +377,8 @@ def goal_progress(
     db = get_db(db_path)
     store = EventStore(db)
 
-    goal_data = db.get_goal_by_outcome(goal)
-    if not goal_data:
-        console.print(f"[red]Goal not found:[/red] {goal}")
-        raise typer.Exit(1)
+    with exit_on_error():
+        goal_data = db.get_goal_by_outcome(goal)
 
     with exit_on_error():
         store.update_progress(goal_id=goal_data["goal_id"], progress=progress)
@@ -608,11 +597,8 @@ def letter(
 ) -> None:
     """Read the sealed letter for a habit."""
     db = get_db(db_path)
-    habit = db.get_habit_by_name(habit_name)
-
-    if not habit:
-        console.print(f"[red]Habit not found:[/red] {habit_name}")
-        raise typer.Exit(1)
+    with exit_on_error():
+        habit = db.get_habit_by_name(habit_name)
 
     if not habit.get("why"):
         console.print("[yellow]No letter was written for this habit.[/yellow]")

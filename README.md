@@ -93,6 +93,12 @@ what the CLI reads. There is no replay or rebuild step. `storage/database.py` ow
 the per-event projection; `storage/events.py` exposes one method per command. A new database is
 seeded with the default journal prompts in four categories.
 
+**Names.** Commands refer to habits by name and to goals by outcome. The match is exact (any
+case for goals) and only active habits and goals count, so `habit add` refuses a name an active
+habit already has, `goal add` refuses an outcome an active goal already has, and an archived
+or finished name can be reused. A name that matches nothing, or more than one row in a
+database written before this rule, is reported as an error.
+
 **Analytics.** `streaks` gives the current and longest streak and the completion rate since the
 habit was created. `trends` gives per-day mood and completion series. `correlations` compares
 average journal mood on days a habit was done against days it was not (a difference of means,
@@ -161,6 +167,9 @@ tables are its projection, updated once as the event is appended.
 - **2026-10-28** The store validates every write by building its Pydantic model, rather than
   trusting the CLI: the models already carried the ranges, and a second caller (tests, a future
   UI) would otherwise write anything.
+- **2026-10-28** Goal lookup is exact among active goals, not a `%x%` match over all of them:
+  a substring picked an arbitrary goal when several matched, and habits already worked this
+  way. Duplicate active names are refused at creation so the lookup cannot be ambiguous.
 
 ## History
 

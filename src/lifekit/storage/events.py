@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 
 from pydantic import TypeAdapter, ValidationError
 
-from lifekit.errors import InvalidValueError
+from lifekit.errors import DuplicateNameError, InvalidValueError
 from lifekit.models.events import Event, EventType
 from lifekit.models.goal import Goal, Milestone, Progress
 from lifekit.models.habit import Habit, HabitLog
@@ -54,6 +54,8 @@ class EventStore:
         why: str | None = None,
         tiny_version: str | None = None,
     ) -> str:
+        if self.db.has_habit(name):
+            raise DuplicateNameError(f"A habit named '{name}' already exists")
         habit = _validated(
             lambda: Habit(
                 habit_id=str(uuid.uuid4()),
@@ -155,6 +157,8 @@ class EventStore:
         outcome: str,
         deadline: datetime | None = None,
     ) -> str:
+        if self.db.has_goal(outcome):
+            raise DuplicateNameError(f"An active goal '{outcome}' already exists")
         goal = _validated(
             lambda: Goal(
                 goal_id=str(uuid.uuid4()),

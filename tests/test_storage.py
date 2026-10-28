@@ -6,8 +6,8 @@ from pathlib import Path
 import duckdb
 import pytest
 
-from lifekit.errors import InvalidValueError
-from lifekit.models import EventType
+from lifekit.errors import AmbiguousNameError, DuplicateNameError, InvalidValueError, NotFoundError
+from lifekit.models import Event, EventType
 from lifekit.storage.database import Database
 from lifekit.storage.events import EventStore
 
@@ -192,15 +192,15 @@ class TestEventStore:
         goal_id = store.create_goal(outcome="Complete test")
         store.complete_goal(goal_id)
 
-        goal = db.get_goal_by_outcome("Complete test")
-        assert goal["status"] == "achieved"
+        (goal,) = db.get_goals(status="achieved")
+        assert goal["goal_id"] == goal_id
 
     def test_abandon_goal(self, store: EventStore, db: Database) -> None:
         goal_id = store.create_goal(outcome="Abandon test")
         store.abandon_goal(goal_id)
 
-        goal = db.get_goal_by_outcome("Abandon test")
-        assert goal["status"] == "abandoned"
+        (goal,) = db.get_goals(status="abandoned")
+        assert goal["goal_id"] == goal_id
 
     def test_get_events_since(self, store: EventStore) -> None:
         store.create_habit(name="Recent habit")
@@ -255,3 +255,69 @@ class TestStoreValidation:
         assert "\n" not in message
         assert "mood_after" in message
         assert "quality" in message
+
+
+class TestLookupByName:
+    """Names identify exactly one live habit or goal, or the lookup says why not."""
+
+    def test_goal_lookup_is_exact_not_partial(self, store: EventStore, db: Database) -> None:
+        store.create_goal(outcome="Run a 5k without stopping")
+
+        with pytest.raises(NotFoundError, match="Goal not found: Run a 5k"):
+            db.get_goal_by_outcome("Run a 5k")
+
+    def test_goal_lookup_ignores_case(self, store: EventStore, db: Database) -> None:
+        goal_id = store.create_goal(outcome="Run a 5k")
+
+        assert db.get_goal_by_outcome("run A 5K")["goal_id"] == goal_id
+
+    def test_goal_lookup_rejects_ambiguous_name(self, store: EventStore, db: Database) -> None:
+        # Reason: a database written before duplicate names were refused can hold two.
+        for _ in range(2):
+            db.append_event(
+                Event(
+                    event_type=EventType.GOAL_CREATED,
+                    entity_id=f"goal-{_}",
+                    data={"outcome": "Twice", "deadline": None},
+                )
+            )
+
+        with pytest.raises(AmbiguousNameError, match="2 active goals are named 'Twice'"):
+            db.get_goal_by_outcome("Twice")
+
+    def test_goal_lookup_sees_only_active_goals(self, store: EventStore, db: Database) -> None:
+        old_id = store.create_goal(outcome="Run a 5k")
+        store.complete_goal(old_id)
+        new_id = store.create_goal(outcome="Run a 5k")
+
+        assert db.get_goal_by_outcome("Run a 5k")["goal_id"] == new_id
+
+    def test_habit_lookup_raises_when_missing(self, db: Database) -> None:
+        with pytest.raises(NotFoundError, match="Habit not found: Nope"):
+            db.get_habit_by_name("Nope")
+
+    def test_create_habit_refuses_duplicate_name(self, store: EventStore, db: Database) -> None:
+        store.create_habit(name="Read")
+
+        with pytest.raises(DuplicateNameError, match="already"):
+            store.create_habit(name="Read")
+
+        assert len(db.get_habits()) == 1
+
+    def test_archived_habit_name_can_be_reused(self, store: EventStore, db: Database) -> None:
+        old_id = store.create_habit(name="Read")
+        store.archive_habit(old_id)
+
+        new_id = store.create_habit(name="Read")
+
+        assert db.get_habit_by_name("Read")["habit_id"] == new_id
+
+    def test_create_goal_refuses_duplicate_active_outcome(
+        self, store: EventStore, db: Database
+    ) -> None:
+        store.create_goal(outcome="Run a 5k")
+
+        with pytest.raises(DuplicateNameError, match="already"):
+            store.create_goal(outcome="run a 5k")
+
+        assert len(db.get_goals()) == 1

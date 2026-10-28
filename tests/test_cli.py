@@ -41,6 +41,14 @@ class TestHabitCommands:
         assert "Traceback" not in result.output
         assert isinstance(result.exception, SystemExit)
 
+    def test_habit_add_duplicate_name_is_refused(self, temp_db: str) -> None:
+        runner.invoke(app, ["habit", "add", "Read", "-d", temp_db])
+        result = runner.invoke(app, ["habit", "add", "Read", "-d", temp_db])
+
+        assert result.exit_code == 1
+        assert "already" in result.stdout
+        assert "Traceback" not in result.output
+
     def test_habit_list_empty(self, temp_db: str) -> None:
         result = runner.invoke(app, ["habit", "list", "-d", temp_db])
         assert result.exit_code == 0
@@ -157,6 +165,14 @@ class TestGoalCommands:
 
         assert result.exit_code == 0
         assert "Added milestone" in result.stdout
+
+    def test_goal_partial_name_is_not_found(self, temp_db: str) -> None:
+        runner.invoke(app, ["goal", "add", "Run a 5k without stopping", "-d", temp_db])
+        result = runner.invoke(app, ["goal", "progress", "Run a 5k", "50", "-d", temp_db])
+
+        assert result.exit_code == 1
+        assert "Goal not found" in result.stdout
+        assert "Traceback" not in result.output
 
     def test_goal_progress(self, temp_db: str) -> None:
         runner.invoke(app, ["goal", "add", "Progress test", "-d", temp_db])

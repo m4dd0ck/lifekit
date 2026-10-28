@@ -11,3 +11,15 @@ class LifekitError(Exception):
 
 class InvalidValueError(LifekitError):
     """A value failed validation at the store boundary."""
+
+
+class NotFoundError(LifekitError):
+    """No live habit or goal has the given name."""
+
+
+class AmbiguousNameError(LifekitError):
+    """More than one live habit or goal has the given name."""
+
+
+class DuplicateNameError(LifekitError):
+    """A live habit or goal with that name already exists."""
